@@ -25,7 +25,7 @@ interface SavedState {
   showParties: boolean;
 }
 
-const STORAGE_KEY = "29n-a-ciegas-v1";
+const STORAGE_KEY = "29n-a-ciegas-v2";
 const LETTERS = "ABCDEFGH";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -37,9 +37,27 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// Cada tema recibe un orden distinto: ningún partido repite la posición que tenía en el
+// tema anterior y no se repite ninguna combinación ya usada en otro tema.
 function newOrder(): Record<string, PartyId[]> {
   const o: Record<string, PartyId[]> = {};
-  for (const t of TOPICS) o[t.id] = shuffle(t.proposals.map((p) => p.party));
+  const used = new Set<string>();
+  let prev: PartyId[] = [];
+  for (const t of TOPICS) {
+    const parties = t.proposals.map((p) => p.party);
+    let best = shuffle(parties);
+    for (let tries = 0; tries < 500; tries++) {
+      const cand = shuffle(parties);
+      const samePos = cand.some((pid, i) => prev[i] === pid);
+      if (!samePos && !used.has(cand.join())) {
+        best = cand;
+        break;
+      }
+    }
+    used.add(best.join());
+    o[t.id] = best;
+    prev = best;
+  }
   return o;
 }
 
